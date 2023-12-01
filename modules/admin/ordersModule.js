@@ -44,7 +44,8 @@ ordersModule.get("/dashboard-order-data" , async (req , res) => {
                     numberOfSales: s.variants.map(v => v.quantiteUser).reduce((a,b) => a + b)
                 }
             }).reduce((a,b) => [...(Array.isArray(a) ? a : [a]) , ...(Array.isArray(b) ? b : [b])])
-        }).reduce((a,b) => [...(Array.isArray(a) ? a : [a]) , ...(Array.isArray(b) ? b : [b])])
+        })
+        .reduce((a,b) => [...(Array.isArray(a) ? a : [a]) , ...(Array.isArray(b) ? b : [b])])
         let totalRevenue = await orders.map(o => o.shoppingCard.map(o => o.variants.map(v => v.quantiteUser * v.salePrice).reduce((a,b) => a + b)).reduce((a,b) => a + b)).reduce((a,b) => a + b)
         
         let final_dataChart_Sales = []
@@ -104,6 +105,7 @@ ordersModule.get("/dashboard-order-data" , async (req , res) => {
 
         let topProductsSaling_count = []
 
+        console.log(monthTopProductsSaling)
         monthTopProductsSaling.forEach(item => {
             let checkIfExist = topProductsSaling_count.filter(p => p._id+"" === item._id+"")
             if (checkIfExist.length === 0) {
@@ -164,10 +166,25 @@ ordersModule.get("/dashboard-order-data" , async (req , res) => {
 ordersModule.get("/filter", async (req , res) => {
     const {_id} = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
 
+    let startTime = new Date().setHours(0,0,0,0)
+    // let filterObject = {userId: _id}
+    // // || {$in:  ["pending" , "confirmed" , "shipped" , "delivered" , "cancelled" , "on_hold" , "delayed" , "returned"]}
+    // if(req.query.status && req.query.status !== "false") {
+    //     filterObject["current_status.name"] = req.query.status
+    // }
+    // if(req.query.time === "today"){
+    //     filterObject.addedIn = {
+    //             $gte: startTime // || 0
+    //     }
+    // }
+    // orders.find(filterObject).then((order_filters) => {
+    //     res.json({success: true , subData: orders, data: order_filters})
+    // }).catch(err => console.log(err))
     orders.find({userId: _id}).then((orders) => {
 
         if(req.query.status && req.query.status !== "false"){
-            res.json({success: true , subData: orders, data: orders.filter(order => order.status[order.status.length - 1].name === req.query.status)})
+            // status[order.status.length - 1]
+            res.json({success: true , subData: orders, data: orders.filter(order => order.current_status.name === req.query.status)})
             return
         }
 
@@ -257,7 +274,11 @@ ordersModule.post("/new-order",async (req , res) => {
                 status: [{
                     name: "pending",
                     addedIn: Date.now()
-                }]
+                }],
+                current_status: {
+                    name: "pending",
+                    addedIn: Date.now()
+                }
             }).save().then((docs) => {
                 console.log(docs,9999);
                 if (myUsers.length - 1 === index) {
@@ -389,6 +410,10 @@ ordersModule.put("/change-order-status", (req , res) => {
             name: req.body.status,
             addedIn: Date.now()
         }]
+        order.current_status = {
+            name: req.body.status,
+            addedIn: Date.now()
+        }
         // order.status = [{name: "pending" , addedIn: Date.now()}]
         // order.status = []
         order.save().then((docs) => {
@@ -400,6 +425,7 @@ ordersModule.put("/delete-order-status", (req , res) => {
     console.log(req.body);
     orders.findById(req.body.orderId).then((order) => {
         order.status = order.status.filter((s,index) => index !== req.body.statusIndex)
+        order.current_status = order.status[order.status.length - 1]
         // order.status = [{name: "pending" , addedIn: Date.now()}]
         // order.status = []
         order.save().then((docs) => {
@@ -431,6 +457,11 @@ ordersModule.put("/update-many-status" , (req , res) => {
             name: req.body.status,
             addedIn: Date.now()
           } } 
+          ,
+          current_status: {
+            name: req.body.status,
+            addedIn: Date.now()
+          }
     }).then((prdcs) => {
       res.json({success: true , data: req.body})
     }).catch(err => console.log(err))

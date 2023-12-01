@@ -32,7 +32,13 @@ const userSchema = new mongoose.Schema({
   coupons: {
     type: Array,
     default: []
- } 
+ },
+ avatar:{
+  type: String,
+ },
+ phone:{
+  type: String,
+ },
 });
 
 const users = mongoose.model("users", userSchema);

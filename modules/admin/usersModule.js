@@ -7,6 +7,8 @@ const bcrypt = require("bcrypt")
 const multer = require("multer");
 // JWT
 const jwt = require("jsonwebtoken")
+// fs
+const fs  = require("fs")
 
 // // cors
 // const cors = require('cors')
@@ -14,10 +16,9 @@ const jwt = require("jsonwebtoken")
 
 // "/admin/account"
 usersModule.get("/auth/addAuthToState",async (req , res) => {
-    console.log(req.cookies._auth)
     const result = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
     console.log(result);
-    users.findById(result._id).then((user) => {
+    users.findById(result._id,{password: false}).then((user) => {
         if(user){
             return res.json({success: true , user , token: req.cookies._auth})
         }else{
@@ -363,5 +364,61 @@ usersModule.put("/categories/delete-many-status" , async (req , res) => {
     // }).catch(err => console.log(err))
 })
 // #####################
+usersModule.put("/settings/profile/update" , storage.single("avatar"), async (req , res) => {
+    const {_id} = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
+    console.log(req.body, req.file?.filename ,1000000);
+
+    users.updateOne({_id}, {...req.body, avatar: req.body?.emptyAvatar ? "" : req.file?.filename}).then(docs => {
+        console.log(docs);
+        // req.file?.filename && 
+        if (req.body?.oldAvatar) {
+            // http://localhost:3500/media/
+            let path = `./public/uploads/${req.body?.oldAvatar.split("http://localhost:3500/media/",2)[1]}`
+            fs.unlink(path,(err) => {
+                if (err) {
+                    console.log(err,"not deleted ???")
+                } else {
+                  console.log("deleted....");
+    
+                }
+            })
+        }
+        if(!docs.acknowledged && !req.file?.filename && !req.body.emptyAvatar){
+            res.json({success: false , error: "PLease Change Informations"})
+            return
+        }
+        res.json({success: true , data: {...req.body , emptyAvatar: req.body?.emptyAvatar  , avatar: req.body?.emptyAvatar ? undefined : req.file?.filename}})
+    }).catch(err => console.log(err))
+})
+usersModule.put("/settings/password/update" , async (req , res) => {
+    const {_id} = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
+    users.findById({_id}).then(user => {
+        bcrypt.compare(req.body.current_password,user.password).then((pass_checked) => {
+            if (pass_checked) {
+                console.log(pass_checked);
+                bcrypt.hash(req.body.new_password , +process.env.PASSWORD_KEY).then(hashPass => {
+                    user.password = hashPass
+                    user.save().then(newUser => {
+                        res.json({success: "Password changed successfully"})  
+                    }).catch(err => console.log(err))
+                }).catch(err => console.log(err))
+                return
+            }
+            res.json({success: false, error: "Password not changed !"})
+        }).catch(err => console.log(err))
+    })
+})
+
+
+
+
+
+// get user for testing
+usersModule.get("/userrr" , storage.single("avatar"), async (req , res) => {
+    const {_id} = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
+    users.findById({_id} , {_id: true , email: true , userName: true, avatar: true , password: true}).then(user => {
+        res.json(user)
+    })
+})
 
 module.exports = usersModule;

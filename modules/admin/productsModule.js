@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken")
 // multer
 const multer = require("multer");
 const users = require("../../models/admin/user_schema");
+const { Collection } = require("mongoose");
 
 // '/admin/products'
 const auth = (req,res,next) => {
@@ -23,9 +24,10 @@ const auth = (req,res,next) => {
 }
 productsModule.get("/", auth , async (req, res) => {
   // res.send("all products");
+  const {_id} = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
   // const {userId} = await jwt.verify(req.cookies._auth,process.env.JWT_SECRET)
   products
-    .find()
+    .find({userId: _id})
     .then((docs) => {
       res.json(docs);
     })
@@ -34,7 +36,7 @@ productsModule.get("/", auth , async (req, res) => {
 productsModule.get("/:id", auth , (req, res) => {
   // res.send("all products");
   products
-    .findById({ _id: req.params.id })
+    .findById({_id: req.params.id})
     .then(async (product) => {
       users.findById(product.userId).then((user) => {
           res.json({product,attributes: user.attributes});
@@ -212,6 +214,7 @@ productsModule.put("/change-visibility", auth , async (req, res) => {
   console.log(prod,8888);
   prod.productStatus.visibility = (req.body.visibility == "true" ? "false" : "true")
   console.log(prod,9998);
+
       products.updateOne({_id:req.body.id},prod
         )
         .then((docs) => {
@@ -219,6 +222,27 @@ productsModule.put("/change-visibility", auth , async (req, res) => {
           res.json(prod);
         })
         .catch((err) => console.log(err,99999999999));
+  console.log("######################################################");
+  // return
+
+  // products.findOne({_id: req.body.id}).then(async (prod) => {
+  //   prod.productStatus.visibility = (req.body.visibility == "true" ? "false" : "true")
+  //   await prod.save().then((p) => {
+  //     console.log("success", p, 333333333);
+  //     res.json(prod);
+  //   }).catch((err) => console.log(err))
+  // }).catch((err) => console.log(err))
+  // console.log(prod,8888);
+  // prod.productStatus.visibility = (req.body.visibility == "true" ? "false" : "true")
+  // console.log(prod,9998);
+
+  //     products.updateOne({_id:req.body.id},prod
+  //       )
+  //       .then((docs) => {
+  //         console.log(docs,5555);
+  //         res.json(prod);
+  //       })
+  //       .catch((err) => console.log(err,99999999999));
 });
 productsModule.put("/add-variants", auth , async (req, res) => {
   console.log(req.body,9999999999);

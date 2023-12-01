@@ -40,6 +40,10 @@ const orderSchema = new mongoose.Schema({
     type: Array,
     default: [{name: "pending",addedIn: Date.now()}],
   },
+  current_status: {
+    type: Object,
+    default: [{name: "pending",addedIn: Date.now()}]
+  },
   addedIn: {
     type: Number,
     default: Date.now(),
